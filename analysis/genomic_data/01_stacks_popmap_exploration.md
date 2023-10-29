@@ -19,7 +19,9 @@ for i in 1 2 3 4 5 6 7 8 9 10; do sbatch --export=M=$i stacks.sh ;done
 denovo_map.pl --samples $reads_dir --popmap $popmap -o $out_dir -M $M -N $M --paired -T 8 -X "populations:--vcf -R 0.8" &> M_${M}_logfile.log
 ```
 
-For each of the four analyses we did hockeystick plots (see Paris et al for details) and a PCA. The PCA analysis involved, cleaning the data in the following way:
+For each of the four analyses we did hockeystick plots (see Paris et al for details), where the best -M/-N combination was 1 when the outgroup was not included, and 2 when the outgroup was included.
+
+We then explored the data using a PCA. The PCA analysis involved, cleaning the data in the following way:
 ```
 # The denovo_map.pl command above output a vcf file, which was further cleaned by vcftools:
 # --maf 0.05 - minimum allele frequency of 5 %
@@ -89,3 +91,7 @@ grid.arrange(arrangeGrob(a + theme(legend.position = "none"),
 a + geom_text(aes(label = samples_fromFelipe))
 plotly(a)
 ```
+
+Conclusion: all analyses produced similar PCA results. We will follow with the island characterization.
+
+Co
