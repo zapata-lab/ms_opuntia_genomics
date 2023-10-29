@@ -132,16 +132,97 @@ finestructure -m T -x 10000 populations.haps_chunks.out populations.haps_chunks.
 
 FST
 ```
+## Getting a vcf, and cleaning it.
+populations -P ../../01_stacksRun/without_outgroup/ -O . -M ../../../00_popmap/popmap_cleaned_withoutOutgroup.tsv -R 0.8 --vcf -t 8 --fasta-loci --batch-size 20000
+vcftools --vcf ../01_populations/populations.snps.vcf --maxDP 200 --max-meanDP 200 --minDP 10 --min-meanDP 10 --max-missing 0.25 --recode --stdout > opuntia_without_outgroup_WriteRandomSNP_R80_MaxDP200_MinDP10_MaxMissing0_25.vcf
+
+# FST on populations with >=5 individuals:
+# santa_cruz.tsv
+# wolf.tsv
+# genovesa.tsv
+
+# FST calculations:
+vcftools --vcf ../02_vcfClean/opuntia_without_outgroup_WriteRandomSNP_R80_MaxDP200_MinDP10_MaxMissing0_25.vcf --fst-window-size 1000 --fst-window-step 1000 --weir-fst-pop santa_cruz.tsv --weir-fst-pop genovesa.tsv --out santa_cruz_genovesa
+Weir and Cockerham mean Fst estimate: 0.10014
+Weir and Cockerham weighted Fst estimate: 0.18869
+
+vcftools --vcf ../02_vcfClean/opuntia_without_outgroup_WriteRandomSNP_R80_MaxDP200_MinDP10_MaxMissing0_25.vcf --fst-window-size 1000 --fst-window-step 1000 --weir-fst-pop santa_cruz.tsv --weir-fst-pop wolf.tsv --out santa_cruz_wolf
+Weir and Cockerham mean Fst estimate: 0.13307
+Weir and Cockerham weighted Fst estimate: 0.25564
+
+vcftools --vcf ../02_vcfClean/opuntia_without_outgroup_WriteRandomSNP_R80_MaxDP200_MinDP10_MaxMissing0_25.vcf --fst-window-size 1000 --fst-window-step 1000 --weir-fst-pop genovesa.tsv --weir-fst-pop wolf.tsv --out genovesa_wolf
+Weir and Cockerham mean Fst estimate: 0.15083
+Weir and Cockerham weighted Fst estimate: 0.26648
+
+# Selecting the top 5%. 
+wc -l *fst
+  8931 genovesa_wolf.windowed.weir.fst (5% is 446)
+  9802 santa_cruz_genovesa.windowed.weir.fst (5% is 490)
+  9321 santa_cruz_wolf.windowed.weir.fst (5% is 466)
+
+# Adding an extra number to the tail so we remove the header
+cat genovesa_wolf.windowed.weir.fst | grep -v "e" | grep -v "-" | sort -k5 | tail -n 447 | awk '{print $1}' | head -n 446 | sed "s/^/CLocus_/" > ../04_chrBLAST2go/genovesa_wolf_CHR_toExtract.tsv
+cat santa_cruz_genovesa.windowed.weir.fst | grep -v "e" | grep -v "-" | sort -k5 | tail -n 491 | awk '{print $1}' | head -n 490 | sed "s/^/CLocus_/" > ../04_chrBLAST2go/santa_cruz_genovesa_CHR_toExtract.tsv
+cat santa_cruz_wolf.windowed.weir.fst | grep -v "e" | grep -v "-" | sort -k5 | tail -n 467 | awk '{print $1}' | head -n 466 | sed "s/^/CLocus_/" > ../04_chrBLAST2go/santa_cruz_wolf_CHR_toExtract.tsv
+
+# Code explained. I removed the e from entries such as 1e-10, and negative fst values. I sorted after weighted Fst, and get the top 447 fst values, printed only the chr name, removed the final line with the header, and added locus ID.
+
+
+grep -A 1 --no-group-separator -F -w -f genovesa_wolf_CHR_toExtract.tsv ../01_populations/populations.loci.fa > genovesa_wolf.fa
+grep -A 1 --no-group-separator -F -w -f santa_cruz_genovesa_CHR_toExtract.tsv ../01_populations/populations.loci.fa > santa_cruz_genovesa.fa
+grep -A 1 --no-group-separator -F -w -f santa_cruz_wolf_CHR_toExtract.tsv ../01_populations/populations.loci.fa > santa_cruz_wolf.fa
+
+# Downloaded the database: https://www.arabidopsis.org/download_files/Proteins/TAIR10_protein_lists/TAIR10_pep_20101214
+
+makeblastdb -in TAIR10_pep_20101214.faa -parse_seqids -dbtype prot
+blastx -out santa_cruz_genovesa.blast -db TAIR10_pep_20101214.faa -query ../04_chrBLAST2go/santa_cruz_genovesa.fa -outfmt "6 qseqid sseqid evalue sstart send sseq"
+blastx -out santa_cruz_wolf.blast -db TAIR10_pep_20101214.faa -query ../04_chrBLAST2go/santa_cruz_wolf.fa -outfmt "6 qseqid sseqid evalue sstart send sseq"
+blastx -out genovesa_wolf.blast -db TAIR10_pep_20101214.faa -query ../04_chrBLAST2go/genovesa_wolf.fa -outfmt "6 qseqid sseqid evalue sstart send sseq"
+
+
+### conditions, e-value below 0.001 and length of aa sequence >20.
+cat genovesa_wolf.blast | awk '$3<0.001 && length($6) >20 {print $0}'  > genovesa_wolf_tentativeArabidopsis.tsv
+cat santa_cruz_genovesa.blast | awk '$3<0.001 && length($6) >20 {print $0}'  > santa_cruz_genovesa_tentativeArabidopsis.tsv
+cat santa_cruz_wolf.blast | awk '$3<0.001 && length($6) >20 {print $0}'  > santa_cruz_wolf_tentativeArabidopsis.tsv
 ```
 
 splitsTree
 ```
+#Getting a vcf and cleaning it
+populations -P ../../01_stacksRun/without_outgroup/ -O . -M ../../../00_popmap/popmap_cleaned_withoutOutgroup.tsv -R 0.8 -t 8 --vcf
+vcftools --vcf ../01_populations/populations.snps.vcf --maxDP 200 --max-meanDP 200 --minDP 10 --min-meanDP 10 --max-missing 0.25 --recode --stdout > opuntia_without_outgroup_R80_MaxDP200_MinDP10_MaxMissing0_25.vcf
+
+# Converting it using vcf2phyl.py
+python2 vcf2phyl.py -i ../02_vcfClean/opuntia_without_outgroup_R80_MaxDP200_MinDP10_MaxMissing0_25.vcf --nexus
+
+# Ran it on the GUI for splitstree.
 ```
 
-phylTree
+phylogenetic tree
 ```
+# The code is similar to the code used for the IQ-tree analyses with outgroup (see script 04_analyses_including_outgroup.md) :-)
+
 ```
 
 SNAPP
 ```
+# 00 - parsing out and reducing the vcf to 4,000 SNPs
+ln -s ../../02_PCA_admixture/02_vcfcleaning/opuntia_without_outgroup_WriteRandomSNP_R80_MaxDP200_MinDP10_MaxMissing0_25.vcf  .
+
+# First, we get 4000 snps.
+for i in 1 2 3 4 5; do grep -v "^#" opuntia_without_outgroup_WriteRandomSNP_R80_MaxDP200_MinDP10_MaxMissing0_25.vcf | cut -f1-3 | shuf | head -n 4000 | cut -f 3 > random.$i.snps; done
+
+for i in 1 2 3 4 5; do vcftools --vcf opuntia_without_outgroup_WriteRandomSNP_R80_MaxDP200_MinDP10_MaxMissing0_25.vcf --snps random.$i.snps --recode --out trimmed.$i.vcf; done
+
+# Second, we use the vcf2nex.pl downloaded from the SNAPP website.
+perl ../vcf2nex.pl trimmed.vcf > trimmed.nex
+
+# Third, we need to ' missing=. ' manually to the nexus file so it knows how the missingdata should be processed.
+nano trimmed.nex
+
+# Forth, we format populations manually on beauti GUI (snapp window)
+# Fifth, we uncheck "Include non-polymorphic sites"
+# Sixth calculate mutation rates.
+
+beast -seed $RANDOM -threads 10 -beagle trimmed.xls.xml
 ```
